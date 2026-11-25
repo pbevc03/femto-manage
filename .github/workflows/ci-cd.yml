@@ -1,0 +1,45 @@
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-fm/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend-fm
+        run: npm ci
+
+      - name: Lint frontend
+        working-directory: frontend-fm
+        run: npm run lint
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend-fm/pom.xml
+
+      - name: Lint backend
+        working-directory: backend-fm
+        run: ./mvnw --batch-mode validate
