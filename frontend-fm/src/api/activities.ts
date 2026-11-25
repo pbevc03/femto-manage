@@ -1,3 +1,5 @@
+import { apiUrl } from './base'
+
 export type CategoryOption = { id: string; code: string; name: string; active: boolean }
 export type PlaceOption = { id: string; name: string; latitude: number; longitude: number; radiusM: number }
 export type JournalActivity = { id: string; title: string; description?: string; startAt: string; endAt: string; categoryId: string; placeId?: string }
@@ -29,14 +31,18 @@ export async function request<T>(path: string, body?: unknown, method = body ===
   try {
     const headers: Record<string, string> = {}
     if (method !== 'GET') {
-      const csrfResponse = await fetch('/api/auth/csrf', { credentials: 'same-origin' })
+      const csrfResponse = await fetch(apiUrl('auth/csrf'), {credentials: 'include',})
       if (!csrfResponse.ok) throw new Error('csrf')
       const csrf: { headerName: string; token: string } = await csrfResponse.json()
       headers[csrf.headerName] = csrf.token
       headers['Content-Type'] = 'application/json'
     }
-    const response = await fetch(`/api/${path}`, { method, credentials: 'same-origin', headers,
-      body: body === undefined ? undefined : JSON.stringify(body) })
+    const response = await fetch(apiUrl(path), {
+      method,
+      credentials: 'include',
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
     if (!response.ok) {
       const error = await response.json().catch(() => ({}))
       throw new JournalError(response.status, error.fields ?? {}, error.overlaps ?? [], error.message)

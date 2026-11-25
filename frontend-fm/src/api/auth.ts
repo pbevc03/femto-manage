@@ -1,3 +1,5 @@
+import { apiUrl } from './base'
+
 export type User = { id: string; email: string; role: 'USER' | 'MENTOR' | 'ADMIN'; createdAt: string }
 export type ApiError = { message: string; fields: Record<string, string> }
 
@@ -14,16 +16,18 @@ export class AuthError extends Error {
 export async function authRequest<T>(path: string, body?: unknown): Promise<T> {
   try {
     const headers: Record<string, string> = {}
-    if (body !== undefined) {
-      const csrfResponse = await fetch('/api/auth/csrf', { credentials: 'same-origin', cache: 'no-store' })
+    if (body !== undefined) { const csrfResponse = await fetch(apiUrl('auth/csrf'), {credentials: 'include', cache: 'no-store',})
       if (!csrfResponse.ok) throw new Error('csrf')
       const csrf: { headerName: string; token: string } = await csrfResponse.json()
       headers[csrf.headerName] = csrf.token
       headers['Content-Type'] = 'application/json'
     }
-    const response = await fetch(`/api/auth/${path}`, {
-      method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin', cache: 'no-store',
-      headers, body: body === undefined ? undefined : JSON.stringify(body),
+    const response = await fetch(apiUrl(`auth/${path}`), {
+      method: body === undefined ? 'GET' : 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
     })
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Zahteva ni uspela. Poskusi znova.' }))
