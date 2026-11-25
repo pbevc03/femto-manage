@@ -29,7 +29,12 @@ try {
     catch (error) { if (!error.cause) throw error }
   }
   console.log('Preparing isolated H2 backend and test-only administrator')
-  const buildArgs = ['test-compile', 'dependency:build-classpath', '-Dmdep.outputFile=target/browser-classpath.txt', '-q']
+  const buildArgs = [
+    'test-compile',
+    'org.apache.maven.plugins:maven-dependency-plugin:3.11.0:build-classpath',
+    '-Dmdep.outputFile=target/browser-classpath.txt',
+    '-q',
+  ]
   await finished(process.platform === 'win32'
     ? launch('cmd.exe', ['/d', '/s', '/c', `.\\mvnw.cmd ${buildArgs.join(' ')}`], { cwd: backend })
     : launch('./mvnw', buildArgs, { cwd: backend }))
