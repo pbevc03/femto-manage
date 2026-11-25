@@ -43,3 +43,47 @@ jobs:
       - name: Lint backend
         working-directory: backend-fm
         run: ./mvnw --batch-mode validate
+  
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-fm/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend-fm
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend-fm
+        run: npm run build
+
+      - name: Set up Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: backend-fm/pom.xml
+
+      - name: Package backend
+        working-directory: backend-fm
+        run: ./mvnw --batch-mode package -DskipTests
+
+      - name: Save build outputs
+        uses: actions/upload-artifact@v6
+        with:
+          name: application-build
+          path: |
+            frontend-fm/dist/
+            backend-fm/target/backend-fm-*.jar
+          if-no-files-found: error
+          retention-days: 7
