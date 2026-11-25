@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import si.um.feri.riris.backendfm.persistence.user.User;
 import si.um.feri.riris.backendfm.persistence.user.UserRepository;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -50,7 +52,19 @@ class DevelopmentDataCommandTests {
         assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM activity a JOIN place p ON p.id = a.place_id WHERE a.user_id = ? AND p.user_id <> a.user_id", Integer.class, target.getId()));
         assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM activity a JOIN activity b ON a.id <> b.id AND a.user_id = b.user_id " +
                 "AND a.start_at < b.end_at AND a.end_at > b.start_at WHERE a.user_id = ?", Integer.class, target.getId()) > 0);
-        assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM activity WHERE user_id = ? AND CAST(start_at AS DATE) <> CAST(end_at AS DATE)", Integer.class, target.getId()) > 0);
+
+        ZoneId zone = ZoneId.of("Europe/Ljubljana");
+        boolean hasLocalMidnightCrossing = jdbc.query(
+                "SELECT start_at, end_at FROM activity WHERE user_id = ?",
+                (rs, row) -> {
+                    var startDate = rs.getObject("start_at", OffsetDateTime.class).toInstant().atZone(zone).toLocalDate();
+                    var endDate = rs.getObject("end_at", OffsetDateTime.class).toInstant().atZone(zone).toLocalDate();
+                    return !startDate.equals(endDate);
+                },
+                target.getId()
+        ).stream().anyMatch(Boolean::booleanValue);
+
+        assertTrue(hasLocalMidnightCrossing);
         UUID changed = jdbc.queryForObject("SELECT id FROM activity WHERE user_id = ? ORDER BY title LIMIT 1", UUID.class, target.getId());
         jdbc.update("UPDATE activity SET title = ? WHERE id = ?", "Ročni popravek", changed);
         command.run();
