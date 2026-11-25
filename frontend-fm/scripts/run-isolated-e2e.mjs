@@ -40,7 +40,17 @@ try {
     : launch('./mvnw', buildArgs, { cwd: backend }))
   const dependencies = (await readFile(path.join(backend, 'target/browser-classpath.txt'), 'utf8')).trim()
   const classpath = [path.join(backend, 'target/test-classes'), path.join(backend, 'target/classes'), dependencies].join(path.delimiter)
-  const api = launch('java', ['-Dspring.devtools.restart.enabled=false', '-cp', classpath, 'si.um.feri.riris.backendfm.support.BrowserTestApplication'], { cwd: backend })
+  const api = launch(
+    'java',
+    ['-Dspring.devtools.restart.enabled=false', '-cp', classpath, 'si.um.feri.riris.backendfm.support.BrowserTestApplication'],
+    {
+      cwd: backend,
+      env: {
+        ...process.env,
+        FRONTEND_ORIGIN: 'http://127.0.0.1:5174',
+      },
+    },
+  )
   await ready('http://127.0.0.1:8081/api/auth/csrf', api)
   const web = launch(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5174', '--strictPort'], {
     cwd: frontend, env: { ...process.env, BACKEND_URL: 'http://127.0.0.1:8081' },
