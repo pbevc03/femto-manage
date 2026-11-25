@@ -180,3 +180,88 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/femto-manage-backend:${{ github.sha }}
+
+  build-vercel-artifact:
+    name: build-vercel-artifact
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, build, test]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-fm/package-lock.json
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@67.0.0
+
+      - name: Pull Vercel production settings
+        working-directory: frontend-fm
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel deployment artifact
+        working-directory: frontend-fm
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+
+      - name: Save Vercel deployment artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: vercel-output
+          path: frontend-fm/.vercel/output/
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy:
+    name: deploy
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, build, test, build-vercel-artifact, publish-backend-image]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Download Vercel deployment artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: vercel-output
+          path: frontend-fm/.vercel/output/
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@67.0.0
+
+      - name: Deploy backend image on Render
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          IMAGE_URL: ghcr.io/${{ github.repository_owner }}/femto-manage-backend:${{ github.sha }}
+        run: |
+          curl --fail --silent --show-error --get \
+            --data-urlencode "imgURL=${IMAGE_URL}" \
+            "${RENDER_DEPLOY_HOOK_URL}"
+
+      - name: Deploy frontend to Vercel
+        working-directory: frontend-fm
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
