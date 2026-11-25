@@ -1,6 +1,5 @@
 package si.um.feri.riris.backendfm.config;
 import si.um.feri.riris.backendfm.persistence.user.UserRepository;
-import si.um.feri.riris.backendfm.persistence.user.User;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
