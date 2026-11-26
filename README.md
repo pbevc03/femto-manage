@@ -1,4 +1,5 @@
 # FemtoManage
+[![CI/CD](https://github.com/pbevc03/femto-manage/actions/workflows/ci-cd.yml/badge.svg?branch=main)](https://github.com/pbevc03/femto-manage/actions/workflows/ci-cd.yml)
 
 Za lokalni zagon z Docker Compose:
 
